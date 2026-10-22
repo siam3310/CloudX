@@ -1,0 +1,6 @@
+{
+  "name": "CloudX",
+  "description": "Media streaming and tracking app imported from CloudX",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

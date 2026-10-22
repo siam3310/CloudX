@@ -15,10 +15,12 @@ val javaTarget = JvmTarget.fromTarget(libs.versions.jvmTarget.get())
 
 abstract class GenerateGitHashTask : DefaultTask() {
 
+    @get:Optional
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val headFile: RegularFileProperty
 
+    @get:Optional
     @get:InputDirectory
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val headsDir: DirectoryProperty
@@ -28,10 +30,10 @@ abstract class GenerateGitHashTask : DefaultTask() {
 
     @TaskAction
     fun generate() {
-        val head = headFile.get().asFile
+        val head = headFile.orNull?.asFile
 
         val hash = try {
-            if (head.exists()) {
+            if (head != null && head.exists()) {
                 // Read the commit hash from .git/HEAD
                 val headContent = head.readText().trim()
                 if (headContent.startsWith("ref:")) {
@@ -83,6 +85,12 @@ android {
     }
 
     signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         // We just use SIGNING_KEY_ALIAS here since it won't change
         // so won't kill the configuration cache.
         if (System.getenv("SIGNING_KEY_ALIAS") != null) {
@@ -97,13 +105,13 @@ android {
             }
         }
         if (System.getenv("CLOUDX_KEY_ALIAS") != null) {
-        create("stable") {
-        val keystorePath = System.getenv("CLOUDX_KEYSTORE_PATH")
+            create("stable") {
+                val keystorePath = System.getenv("CLOUDX_KEYSTORE_PATH")
  
-        storeFile = file(keystorePath)
-        storePassword = System.getenv("CLOUDX_KEYSTORE_PASSWORD")
-        keyAlias = System.getenv("CLOUDX_KEY_ALIAS")
-        keyPassword = System.getenv("CLOUDX_KEY_PASSWORD")
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("CLOUDX_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("CLOUDX_KEY_ALIAS")
+                keyPassword = System.getenv("CLOUDX_KEY_PASSWORD")
             }
         }
     }
@@ -126,6 +134,11 @@ android {
             "long",
             "BUILD_DATE",
             "${System.currentTimeMillis()}"
+        )
+        buildConfigField(
+            "String",
+            "FLAVOR",
+            "\"stable\""
         )
         buildConfigField(
             "String",
@@ -162,6 +175,7 @@ android {
         }
         debug {
             isDebuggable = true
+            signingConfig = signingConfigs.getByName("debugConfig")
             applicationIdSuffix = ".debug"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -170,29 +184,6 @@ android {
         }
     }
 
-    flavorDimensions.add("state")
-    productFlavors {
-        create("stable") {
-        dimension = "state"
- 
-        if (signingConfigs.names.contains("stable")) {
-        signingConfig = signingConfigs.getByName("stable")
-        } else {
-        logger.warn("No stable signing config!")
-    }
-}
-        create("prerelease") {
-            dimension = "state"
-            applicationIdSuffix = ".prerelease"
-            if (signingConfigs.names.contains("prerelease")) {
-                signingConfig = signingConfigs.getByName("prerelease")
-            } else {
-                logger.warn("No prerelease signing config!")
-            }
-            versionNameSuffix = "-PRE"
-            versionCode = (System.currentTimeMillis() / 60000).toInt()
-        }
-    }
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
@@ -313,7 +304,7 @@ tasks.register<Jar>("androidSourcesJar") {
 tasks.register<Copy>("copyJar") {
     dependsOn("build", ":library:jvmJar")
     from(
-        "build/intermediates/compile_app_classes_jar/prereleaseDebug/bundlePrereleaseDebugClassesToCompileJar",
+        "build/intermediates/compile_app_classes_jar/debug/bundleDebugClassesToCompileJar",
         "../library/build/libs"
     )
     into("build/app-classes")
@@ -352,7 +343,7 @@ dokka {
     moduleName = "App"
     dokkaSourceSets {
         configureEach {
-            suppress = name != "prereleaseDebug"
+            suppress = name != "debug"
             analysisPlatform = KotlinPlatform.JVM
             displayName = "JVM"
             documentedVisibilities(
@@ -368,3 +359,4 @@ dokka {
         }
     }
 }
+

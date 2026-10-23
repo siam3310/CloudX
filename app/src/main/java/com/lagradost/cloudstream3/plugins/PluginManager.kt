@@ -754,6 +754,37 @@ object PluginManager {
         return File("${context.filesDir}/${ONLINE_PLUGINS_FOLDER}/${folderName}/$fileName.cs3")
     }
 
+    suspend fun installDefaultPluginIfMissing(context: Context) {
+        val repoUrl = RepositoryManager.DEFAULT_REPOSITORY.url
+        val internalName = "MegaProvider"
+        val pluginFile = getPluginPath(context, internalName, repoUrl)
+
+        if (!pluginFile.exists()) {
+            try {
+                pluginFile.parentFile?.mkdirs()
+                context.assets.open("default_extensions/MegaProvider.cs3").use { input ->
+                    pluginFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            } catch (e: Exception) {
+                logError(e)
+            }
+        }
+
+        if (pluginFile.exists()) {
+            val data = PluginData(
+                internalName = internalName,
+                url = "https://raw.githubusercontent.com/self-similarity/MegaRepo/builds/MegaProvider.cs3",
+                isOnline = true,
+                filePath = pluginFile.absolutePath,
+                version = PLUGIN_VERSION_NOT_SET
+            )
+            setPluginData(data)
+            loadPlugin(context, pluginFile, data)
+        }
+    }
+
     suspend fun downloadPlugin(
         activity: Activity,
         pluginUrl: String,

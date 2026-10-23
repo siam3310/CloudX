@@ -1356,6 +1356,10 @@ class MainActivity : AppCompatActivity(), ColorPickerDialogListener, BiometricCa
                 }
 
                 ioSafe {
+                    PluginManager.installDefaultPluginIfMissing(this@MainActivity)
+                }
+
+                ioSafe {
                     if (settingsManager.getBoolean(
                             getString(R.string.auto_update_plugins_key),
                             true

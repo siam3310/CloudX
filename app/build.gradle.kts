@@ -53,10 +53,15 @@ abstract class GenerateGitHashTask : DefaultTask() {
 }
 
 val generateGitHash = tasks.register<GenerateGitHashTask>("generateGitHash") {
-    val gitDir = layout.projectDirectory.dir("../.git")
+    val gitHead = file("${rootDir}/.git/HEAD")
+    val gitHeads = file("${rootDir}/.git/refs/heads")
 
-    headFile.set(gitDir.file("HEAD"))
-    headsDir.set(gitDir.dir("refs/heads"))
+    if (gitHead.exists()) {
+        headFile.set(gitHead)
+    }
+    if (gitHeads.exists()) {
+        headsDir.set(gitHeads)
+    }
 
     outputDir.set(layout.buildDirectory.dir("generated/git"))
 }
@@ -166,6 +171,7 @@ android {
     buildTypes {
         release {
             isDebuggable = false
+            signingConfig = signingConfigs.getByName("debugConfig")
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(
@@ -213,6 +219,31 @@ android {
             // Enables legacy JNI packaging to reduce APK size (similar to builds before minSdk 23).
             // Note: This may increase app startup time slightly.
             useLegacyPackaging = true
+        }
+        resources {
+            excludes += setOf(
+                "META-INF/*.version",
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE*",
+                "META-INF/license*",
+                "META-INF/NOTICE*",
+                "META-INF/notice*",
+                "META-INF/ASL2.0",
+                "META-INF/*.kotlin_module",
+                "DebugProbesKt.bin"
+            )
+        }
+    }
+
+    val enableSplits = project.hasProperty("enableSplits")
+    if (enableSplits) {
+        splits {
+            abi {
+                isEnable = true
+                reset()
+                include("arm64-v8a", "armeabi-v7a", "x86_64")
+                isUniversalApk = true
+            }
         }
     }
 

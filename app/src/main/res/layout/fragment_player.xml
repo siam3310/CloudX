@@ -58,11 +58,17 @@
             app:rippleColor="?attr/colorPrimary"
             tools:visibility="visible" />
 
-        <ProgressBar
+        <com.google.android.material.progressindicator.CircularProgressIndicator
             android:id="@+id/main_load"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_gravity="center" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            app:indicatorColor="@color/white"
+            app:indicatorSize="56dp"
+            app:trackColor="#33FFFFFF"
+            app:trackCornerRadius="4dp"
+            app:trackThickness="5dp" />
 
         <FrameLayout
             android:id="@+id/video_go_back_holder_holder"

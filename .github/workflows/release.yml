@@ -1,0 +1,121 @@
+name: Build and Release FakeOTT
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+    paths-ignore:
+      - '*.md'
+      - 'docs/**'
+      - '.gitignore'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "release-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    name: Build & Release FakeOTT APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Release APKs (Optimized Splits & Universal)
+        run: ./gradlew assembleRelease -PenableSplits --no-daemon
+
+      - name: Prepare Release Artifacts
+        id: prepare_artifacts
+        run: |
+          mkdir -p release-artifacts
+          
+          # Find generated APKs
+          find app/build/outputs/apk/release/ -type f -name "*.apk" | while read -r apk; do
+            filename=$(basename "$apk")
+            echo "Found APK: $filename"
+            if [[ "$filename" == *"arm64-v8a"* ]]; then
+              cp "$apk" release-artifacts/FakeOTT-arm64-v8a.apk
+            elif [[ "$filename" == *"armeabi-v7a"* ]]; then
+              cp "$apk" release-artifacts/FakeOTT-armeabi-v7a.apk
+            elif [[ "$filename" == *"x86_64"* ]]; then
+              cp "$apk" release-artifacts/FakeOTT-x86_64.apk
+            elif [[ "$filename" == *"universal"* ]]; then
+              cp "$apk" release-artifacts/FakeOTT-universal.apk
+            else
+              cp "$apk" release-artifacts/FakeOTT-release.apk
+            fi
+          done
+
+          # If universal was not named, ensure at least FakeOTT-universal is present
+          if [ ! -f release-artifacts/FakeOTT-universal.apk ] && [ -f release-artifacts/FakeOTT-release.apk ]; then
+            cp release-artifacts/FakeOTT-release.apk release-artifacts/FakeOTT-universal.apk
+          fi
+
+          # Generate SHA256 Checksums
+          cd release-artifacts
+          sha256sum *.apk > checksums.txt
+          ls -lh
+          cd ..
+
+      - name: Determine Release Tag and Title
+        id: release_info
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            RELEASE_TITLE="FakeOTT ${TAG_NAME}"
+          else
+            TAG_NAME="latest"
+            RELEASE_TITLE="FakeOTT Latest Release"
+          fi
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+          echo "release_title=${RELEASE_TITLE}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag_name }}
+          name: ${{ steps.release_info.outputs.release_title }}
+          draft: false
+          prerelease: false
+          make_latest: true
+          body: |
+            ## ⚡ FakeOTT Auto-Release
+
+            Automatically compiled with optimizations from commit `${{ github.sha }}`.
+
+            ### 📦 Available APK Downloads:
+            | Package | Architecture | Description / Size |
+            | :--- | :--- | :--- |
+            | **FakeOTT-arm64-v8a.apk** | 64-bit ARM (`arm64-v8a`) | ⚡ **Smallest Size (~38MB)** - Recommended for modern phones & Android TVs |
+            | **FakeOTT-armeabi-v7a.apk** | 32-bit ARM (`armeabi-v7a`) | 📱 Compact size for older phones & 32-bit TV boxes |
+            | **FakeOTT-universal.apk** | All Architectures | 🌐 Universal package compatible with all supported Android devices |
+
+            ### 📝 Changes:
+            ${{ github.event.head_commit.message || 'Updated build and latest features.' }}
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

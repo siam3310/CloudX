@@ -97,8 +97,13 @@ data class PluginWrapper(
 
 object RepositoryManager {
     const val ONLINE_PLUGINS_FOLDER = "Extensions"
+    val DEFAULT_REPOSITORY = RepositoryData(
+        iconUrl = "https://raw.githubusercontent.com/self-similarity/MegaRepo/builds/icon.png",
+        name = "Mega repository",
+        url = "https://raw.githubusercontent.com/self-similarity/MegaRepo/builds/repo.json"
+    )
     val PREBUILT_REPOSITORIES: Array<RepositoryData> by lazy {
-        getKey("PREBUILT_REPOSITORIES") ?: emptyArray()
+        arrayOf(DEFAULT_REPOSITORY)
     }
     private val GH_REGEX =
         Regex("^https://raw.githubusercontent.com/([A-Za-z0-9-]+)/([A-Za-z0-9_.-]+)/(.*)$")
@@ -232,7 +237,12 @@ object RepositoryManager {
     }
 
     fun getRepositories(): Array<RepositoryData> {
-        return getKey(REPOSITORIES_KEY) ?: emptyArray()
+        val current = getKey<Array<RepositoryData>>(REPOSITORIES_KEY)
+        return if (current == null || current.isEmpty()) {
+            arrayOf(DEFAULT_REPOSITORY)
+        } else {
+            (current + DEFAULT_REPOSITORY).distinctBy { it.url }.toTypedArray()
+        }
     }
 
     // Don't want to read before we write in another thread

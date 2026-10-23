@@ -767,18 +767,21 @@
             </androidx.constraintlayout.widget.ConstraintLayout>
 
             <!--use for thinner app:trackThickness="3dp" com.google.android.material.progressindicator.CircularProgressIndicator-->
-            <ProgressBar
+            <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/player_buffering"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
-
                 android:clickable="false"
                 android:focusable="false"
                 android:focusableInTouchMode="false"
-
                 android:indeterminate="true"
                 android:visibility="gone"
+                app:indicatorSize="64dp"
+                app:trackThickness="6dp"
+                app:trackCornerRadius="4dp"
+                app:indicatorColor="@color/white"
+                app:trackColor="#33FFFFFF"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent"

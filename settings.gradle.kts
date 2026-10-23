@@ -17,5 +17,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "CloudX"
+rootProject.name = "FakeOTT"
 include(":app", ":library", ":docs")

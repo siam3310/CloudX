@@ -43,6 +43,12 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Ensure Debug Keystore Exists
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Build Release APKs (Optimized Splits & Universal)
         run: ./gradlew assembleRelease -PenableSplits --no-daemon
 
@@ -100,6 +106,7 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
+          target_commitish: ${{ github.sha }}
           body: |
             ## ⚡ FakeOTT Auto-Release
 
